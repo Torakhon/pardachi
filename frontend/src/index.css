@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Telegram mavzusi bo'lmaganda (oddiy brauzer) ishlatiladigan standart qiymatlar */
+:root {
+  --tg-theme-bg-color: #ffffff;
+  --tg-theme-secondary-bg-color: #f1f3f6;
+  --tg-theme-text-color: #14181f;
+  --tg-theme-hint-color: #7c8899;
+  --tg-theme-link-color: #1c66f5;
+  --tg-theme-button-color: #1c66f5;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-section-separator-color: #e3e7ee;
+  --app-card: #ffffff;
+  --app-border: #e3e7ee;
+  --app-input: #ffffff;
+  color-scheme: light;
+}
+
+.dark {
+  --tg-theme-bg-color: #17212b;
+  --tg-theme-secondary-bg-color: #0e1621;
+  --tg-theme-text-color: #f5f7fa;
+  --tg-theme-hint-color: #93a3b5;
+  --tg-theme-link-color: #6ab3f3;
+  --tg-theme-button-color: #3390ec;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-section-separator-color: #253442;
+  --app-card: #1d2733;
+  --app-border: #26323f;
+  --app-input: #222d3a;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    background-color: var(--tg-theme-secondary-bg-color);
+    color: var(--tg-theme-text-color);
+    overscroll-behavior-y: none;
+    margin: 0;
+  }
+
+  /* Mobil brauzerlarda 16px dan kichik shrift avtomatik zoom qiladi */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  ::selection {
+    background: rgba(28, 102, 245, 0.25);
+  }
+}
+
+@layer components {
+  .bg-app {
+    background-color: var(--tg-theme-secondary-bg-color);
+  }
+
+  .text-app {
+    color: var(--tg-theme-text-color);
+  }
+
+  .text-hint {
+    color: var(--tg-theme-hint-color);
+  }
+
+  .card {
+    background-color: var(--app-card);
+    border: 1px solid var(--app-border);
+    @apply rounded-2xl;
+  }
+
+  .divider {
+    border-color: var(--app-border);
+  }
+
+  .field {
+    background-color: var(--app-input);
+    border: 1px solid var(--app-border);
+    color: var(--tg-theme-text-color);
+    @apply w-full rounded-xl px-4 py-3 text-base outline-none transition;
+  }
+
+  .field:focus {
+    border-color: var(--tg-theme-button-color);
+    box-shadow: 0 0 0 3px rgba(28, 102, 245, 0.18);
+  }
+
+  .field-error {
+    border-color: #dc2626 !important;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--app-border) 25%,
+      var(--tg-theme-secondary-bg-color) 37%,
+      var(--app-border) 63%
+    );
+    background-size: 800px 100%;
+    @apply animate-shimmer rounded-lg;
+  }
+
+  .safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .tap-scale {
+    @apply transition-transform active:scale-[0.97];
+  }
+}
+
+/* Scrollbar — nozik ko'rinish */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--tg-theme-hint-color);
+  opacity: 0.4;
+  border-radius: 999px;
+}

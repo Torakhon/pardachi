@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+dist/
+*.local
+
+# Muhit
+.env
+.env.*
+!.env.example
+
+# Media va loglar
+backend/media/
+*.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
