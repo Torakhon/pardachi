@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       host: true,
-      port: 5173,
+      // PORT berilsa (masalan, ishga tushiruvchi vosita tomonidan) o'sha port ishlatiladi.
+      port: Number(process.env.PORT) || 5173,
       proxy: {
         '/api': { target: apiTarget, changeOrigin: true },
         '/media': { target: apiTarget, changeOrigin: true },

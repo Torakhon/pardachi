@@ -115,21 +115,69 @@ make help
 
 ## Telegram botni sozlash
 
-1. [@BotFather](https://t.me/BotFather) da `/newbot` orqali bot yarating, tokenni oling.
-2. Mini App HTTPS domenda turishi **shart**. Test uchun:
-   ```bash
-   ngrok http 8080
-   ```
-3. BotFather'da: `/newapp` → botni tanlang → nom, tavsif, rasm → **Web App URL** sifatida
-   HTTPS manzilingizni kiriting.
-4. `.env` da `WEBAPP_URL` ni o'sha manzilga tenglashtiring va botni ishga tushiring:
-   ```bash
-   docker compose --profile bot up -d bot
-   ```
-5. Botga `/start` yozing — «📏 Ilovani ochish» tugmasi paydo bo'ladi.
+> **Eng muhim qoida:** Mini App HTTPS manzilda turishi shart va **o'sha manzil backend'ga ham
+> yeta olishi kerak**. Faqat frontendni (masalan, Vercel'ga) chiqarish yetarli emas — ilova
+> `/api/v1/...` ga murojaat qiladi, backend topilmasa «Xatolik yuz berdi» chiqadi.
 
-Birinchi kirgan foydalanuvchi avtomatik **administrator** bo'ladi
-(`FIRST_USER_IS_ADMIN=true`). Muqobil variant — `ADMIN_TELEGRAM_IDS` ga ID kiritish.
+### A variant — tez sinov (kompyuterdan tunnel orqali)
+
+Butun stack (nginx frontend + `/api` proksi) bitta portda turadi, shuning uchun bitta tunnel yetarli:
+
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+
+Chiqqan `https://xxx.trycloudflare.com` manzilini `.env` ga yozing:
+
+```bash
+WEBAPP_URL=https://xxx.trycloudflare.com
+CORS_ORIGINS=https://xxx.trycloudflare.com
+```
+
+So'ng qayta ishga tushiring:
+
+```bash
+docker compose up -d --force-recreate backend
+docker compose --profile bot up -d --force-recreate bot
+```
+
+Bot ishga tushganda menyu tugmasini (`setChatMenuButton`) o'zi sozlaydi — BotFather'da qo'lda
+sozlash shart emas. Botga `/start` yozing va «📏 Ilovani ochish» tugmasini bosing.
+
+⚠️ Tunnel manzili har safar qayta ishga tushirilganda **o'zgaradi** — `.env` ni yangilab,
+backend va botni qayta ishga tushirish kerak. Kompyuter o'chsa, ilova ham ishlamaydi.
+
+### B variant — doimiy joylashtirish (tavsiya etiladi)
+
+1. Backend'ni serverga chiqaring (VPS, Railway, Render, Fly.io — `docker-compose.yml` tayyor).
+   Serverda domen va HTTPS bo'lishi kerak, masalan `https://api.pardachi.uz`.
+2. Frontend qayerda turishiga qarab:
+   - **Backend bilan bitta domenda** (nginx orqali, `docker-compose` sxemasi) — hech narsa
+     sozlash shart emas, ilova `/api/v1` ni o'zi topadi.
+   - **Alohida (Vercel/Netlify)** — build paytida `VITE_API_BASE_URL` ni belgilang:
+     ```
+     VITE_API_BASE_URL=https://api.pardachi.uz
+     ```
+     va backend `.env` sida frontend domenini ruxsat bering:
+     ```
+     CORS_ORIGINS=https://pardachi.vercel.app
+     ```
+     `VITE_API_BASE_URL` build vaqtida bundle ichiga yoziladi — o'zgartirgach **qayta deploy**
+     qilish shart.
+3. BotFather'da yoki `.env` dagi `WEBAPP_URL` orqali Mini App manzilini o'sha frontend domeniga
+   tenglashtiring.
+
+### Administrator bo'lish
+
+Botga `/id` yozing — Telegram ID raqamingizni qaytaradi. O'sha raqamni `.env` ga qo'shing:
+
+```bash
+ADMIN_TELEGRAM_IDS=123456789
+docker compose up -d --force-recreate backend
+```
+
+Muqobil variant: baza butunlay bo'sh bo'lsa, birinchi kirgan foydalanuvchi avtomatik
+administrator bo'ladi (`FIRST_USER_IS_ADMIN=true`).
 
 ---
 

@@ -42,6 +42,7 @@ WELCOME = (
 HELP = (
     "<b>Yordam</b>\n\n"
     "/start — ilovani ochish\n"
+    "/id — Telegram ID raqamingiz\n"
     "/help — ushbu yordam\n\n"
     "Savol va takliflar bo‘yicha administratorga murojaat qiling."
 )
@@ -75,6 +76,7 @@ class Bot:
             "setMyCommands",
             commands=[
                 {"command": "start", "description": "Ilovani ochish"},
+                {"command": "id", "description": "Telegram ID raqamim"},
                 {"command": "help", "description": "Yordam"},
             ],
         )
@@ -108,6 +110,19 @@ class Bot:
             )
         elif text.startswith("/help"):
             await self.call(client, "sendMessage", chat_id=chat_id, text=HELP, parse_mode="HTML")
+        elif text.startswith("/id"):
+            user_id = message.get("from", {}).get("id")
+            await self.call(
+                client,
+                "sendMessage",
+                chat_id=chat_id,
+                text=(
+                    f"Sizning Telegram ID raqamingiz: <code>{user_id}</code>\n\n"
+                    "Administrator bo'lish uchun bu raqamni serverdagi <code>.env</code> faylida "
+                    "<code>ADMIN_TELEGRAM_IDS</code> ga yozing va backendni qayta ishga tushiring."
+                ),
+                parse_mode="HTML",
+            )
         elif "web_app_data" in message:
             logger.info("WebApp ma'lumoti keldi: %s", message["web_app_data"].get("data"))
         else:
