@@ -163,31 +163,32 @@ make help
 
 ### A variant — tez sinov (kompyuterdan tunnel orqali)
 
-Butun stack (nginx frontend + `/api` proksi) bitta portda turadi, shuning uchun bitta tunnel yetarli:
+Bitta buyruq hammasini qiladi — stack'ni ko'taradi, tunnel ochadi, `.env` ni yangilaydi,
+backend va botni qayta ishga tushiradi va tekshiradi:
 
 ```bash
-cloudflared tunnel --url http://localhost:8080
+make tunnel
 ```
 
-Chiqqan `https://xxx.trycloudflare.com` manzilini `.env` ga yozing:
+Holatni ko'rish uchun:
 
 ```bash
-WEBAPP_URL=https://xxx.trycloudflare.com
-CORS_ORIGINS=https://xxx.trycloudflare.com
-```
-
-So'ng qayta ishga tushiring:
-
-```bash
-docker compose up -d --force-recreate backend
-docker compose --profile bot up -d --force-recreate bot
+make status
 ```
 
 Bot ishga tushganda menyu tugmasini (`setChatMenuButton`) o'zi sozlaydi — BotFather'da qo'lda
 sozlash shart emas. Botga `/start` yozing va «📏 Ilovani ochish» tugmasini bosing.
 
-⚠️ Tunnel manzili har safar qayta ishga tushirilganda **o'zgaradi** — `.env` ni yangilab,
-backend va botni qayta ishga tushirish kerak. Kompyuter o'chsa, ilova ham ishlamaydi.
+⚠️ **Muhim cheklovlar:**
+
+- Tunnel manzili har qayta ishga tushirishda **o'zgaradi** — `make tunnel` ni qayta bajaring.
+- Kompyuter o'chsa yoki Docker to'xtasa, ilova ishlamaydi (`make status` bilan tekshiring).
+- Ba'zi uy routerlari `*.trycloudflare.com` subdomenlarini **DNS'da hal qilmaydi**. Belgisi:
+  tunnel ishlayapti, lekin telefonda ilova ochilmaydi. Yechim — telefonni mobil internetga
+  ulash yoki DNS'ni `1.1.1.1` / `8.8.8.8` ga o'zgartirish. `make tunnel` buni o'zi aniqlab
+  ogohlantiradi.
+
+Doimiy ishlashi uchun **B variant**dan foydalaning.
 
 ### B variant — doimiy joylashtirish (tavsiya etiladi)
 
