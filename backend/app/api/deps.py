@@ -16,6 +16,7 @@ from app.application.services.measurement_service import MeasurementService
 from app.application.services.project_service import ProjectService
 from app.application.services.room_service import RoomService
 from app.application.services.stats_service import StatsService
+from app.application.services.team_service import TeamService
 from app.application.services.user_service import UserService
 from app.core.config import Settings, get_settings
 from app.core.exceptions import AuthenticationError, InactiveUserError
@@ -118,6 +119,10 @@ def get_stats_service(uow: UowDep) -> StatsService:
     return StatsService(uow)
 
 
+def get_team_service(uow: UowDep) -> TeamService:
+    return TeamService(uow)
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]
 RoomServiceDep = Annotated[RoomService, Depends(get_room_service)]
@@ -125,6 +130,7 @@ MeasurementServiceDep = Annotated[MeasurementService, Depends(get_measurement_se
 ImageServiceDep = Annotated[ImageService, Depends(get_image_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 StatsServiceDep = Annotated[StatsService, Depends(get_stats_service)]
+TeamServiceDep = Annotated[TeamService, Depends(get_team_service)]
 
 
 # ------------------------------------------------------------- yordamchilar

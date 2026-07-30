@@ -15,6 +15,7 @@ from app.infrastructure.repositories.room_repository import (
     SqlAlchemyRoomImageRepository,
     SqlAlchemyRoomRepository,
 )
+from app.infrastructure.repositories.team_repository import SqlAlchemyTeamRepository
 from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
 
 
@@ -22,6 +23,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.users = SqlAlchemyUserRepository(session)
+        self.teams = SqlAlchemyTeamRepository(session)
         self.projects = SqlAlchemyProjectRepository(session)
         self.rooms = SqlAlchemyRoomRepository(session)
         self.items = SqlAlchemyMeasurementItemRepository(session)

@@ -28,6 +28,9 @@ export function buildOptimisticProject(input: {
   customer_phone: string
   address: string
   note: string | null
+  /** Oflayn yaratilganda joriy foydalanuvchining jamoasi. */
+  team_id?: string | null
+  team_name?: string | null
 }): Project {
   return {
     ...input,
@@ -36,6 +39,9 @@ export function buildOptimisticProject(input: {
     created_at: nowIso(),
     updated_at: nowIso(),
     completed_at: null,
+    team_id: input.team_id ?? null,
+    team: null,
+    team_name: input.team_name ?? null,
     creator: null,
     rooms_count: 0,
     items_count: 0,

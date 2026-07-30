@@ -8,10 +8,28 @@ from enum import StrEnum
 class UserRole(StrEnum):
     ADMIN = "admin"
     MEASURER = "measurer"
+    VIEWER = "viewer"
 
     @property
     def label_uz(self) -> str:
-        return {"admin": "Administrator", "measurer": "O'lchovchi"}[self.value]
+        return {
+            "admin": "Administrator",
+            "measurer": "O'lchovchi",
+            "viewer": "Ko'ruvchi",
+        }[self.value]
+
+    @property
+    def description_uz(self) -> str:
+        return {
+            "admin": "Barcha jamoalar, obyektlar va foydalanuvchilarni boshqaradi.",
+            "measurer": "O'z jamoasida obyekt yaratadi va o'lchov kiritadi.",
+            "viewer": "O'z jamoasi ma'lumotlarini faqat ko'radi, o'zgartira olmaydi.",
+        }[self.value]
+
+    @property
+    def can_write(self) -> bool:
+        """Ma'lumot yaratish/tahrirlash huquqi bormi."""
+        return self in (UserRole.ADMIN, UserRole.MEASURER)
 
 
 class ProjectStatus(StrEnum):

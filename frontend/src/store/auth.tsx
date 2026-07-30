@@ -17,8 +17,12 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   isAdmin: boolean
+  /** Ma'lumot yaratish/tahrirlash huquqi (Ko'ruvchi'da yo'q). */
+  canWrite: boolean
+  /** Foydalanuvchi jamoaga biriktirilganmi. */
+  hasTeam: boolean
   signIn: () => Promise<void>
-  devSignIn: (role: 'admin' | 'measurer') => Promise<void>
+  devSignIn: (role: 'admin' | 'measurer' | 'viewer') => Promise<void>
   signOut: () => void
   setUser: (user: User) => void
 }
@@ -78,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'unauthenticated', user: null, error: null })
   }, [])
 
-  const devSignIn = useCallback(async (role: 'admin' | 'measurer') => {
+  const devSignIn = useCallback(async (role: 'admin' | 'measurer' | 'viewer') => {
     setState((previous) => ({ ...previous, status: 'loading', error: null }))
     try {
       const response = await api.anonymous.post<TokenResponse>('/auth/dev-login', {
@@ -118,6 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       isAdmin: state.user?.role === 'admin',
+      canWrite: state.user?.role === 'admin' || state.user?.role === 'measurer',
+      hasTeam: state.user?.role === 'admin' || Boolean(state.user?.team_id),
       signIn: authenticate,
       devSignIn,
       signOut,

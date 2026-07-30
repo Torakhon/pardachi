@@ -11,6 +11,7 @@ Tikuv bo'limi esa barcha ma'lumotni raqamli ko'rinishda oladi — daftar va qog'
 ## Mundarija
 
 - [Imkoniyatlar](#imkoniyatlar)
+- [Jamoalar va rollar](#jamoalar-va-rollar)
 - [Texnologiyalar](#texnologiyalar)
 - [Tez ishga tushirish](#tez-ishga-tushirish)
 - [Telegram botni sozlash](#telegram-botni-sozlash)
@@ -46,11 +47,52 @@ tungi rejim va Telegram mavzusiga moslashish.
 
 ### Administrator uchun
 
-- Barcha obyektlar, xonalar va o'lchovlarni ko'rish
-- Xodimlarni boshqarish: rolni o'zgartirish, bloklash/faollashtirish
-- O'lchovchilar kesimidagi statistika
+- Barcha jamoalar, obyektlar, xonalar va o'lchovlarni ko'rish
+- Jamoa yaratish, tahrirlash va a'zolarni boshqarish
+- Xodimlarni boshqarish: rol berish, jamoaga biriktirish, bloklash/faollashtirish
+- Jamoalar va o'lchovchilar kesimidagi statistika
 - Obyektni tahrirlash, arxivlash (soft delete), tiklash va butunlay o'chirish
 - Barcha o'zgarishlar audit jurnalida saqlanadi
+
+---
+
+## Jamoalar va rollar
+
+Tizim **ko'p jamoali** (multi-tenant): har bir obyekt aynan bitta jamoaga tegishli va
+**boshqa jamoaga hech qanday holatda ko'rinmaydi** — ro'yxatda ham, qidiruvda ham,
+statistikada ham.
+
+### Rollar
+
+| Rol | Ko'rish | Yaratish / Tahrirlash | O'chirish | Jamoalarni boshqarish |
+| --- | --- | --- | --- | --- |
+| **Administrator** | barcha jamoalar | barcha obyektlar | barcha obyektlar | ha |
+| **O'lchovchi** | o'z jamoasi obyektlari | o'z jamoasida, o'zi yaratganini | o'zining yakunlanmaganlari | yo'q |
+| **Ko'ruvchi** | o'z jamoasi obyektlari | — (faqat o'qish) | — | yo'q |
+
+Jamoaga biriktirilmagan foydalanuvchi hech qanday obyektni ko'rmaydi va yarata olmaydi.
+
+### Xodimni qanday qo'shish
+
+1. Xodim botga **`/id`** yozadi va o'z Telegram ID raqamini oladi (sizga aytadi).
+2. Siz **Jamoalar → jamoani tanlang → «A'zo qo'shish»** ni bosasiz.
+3. Telegram ID, ism (ixtiyoriy) va rolni (**O'lchovchi** yoki **Ko'ruvchi**) kiritasiz.
+4. Xodim ilovani birinchi marta ochganda tayyor rol va jamoa bilan kiradi.
+
+> Xodim hali ilovaga kirmagan bo'lsa ham qo'shish mumkin — yozuv oldindan yaratiladi.
+
+Yangi, hech kim biriktirmagan foydalanuvchi avtomatik **Ko'ruvchi** bo'ladi va jamoasi
+bo'lmaydi (`DEFAULT_USER_ROLE=viewer`). Bu tasodifiy kirishning oldini oladi: siz uni
+jamoaga qo'shmaguningizcha hech narsa ko'rmaydi.
+
+### Rol va jamoani o'zgartirish
+
+- **Jamoalar → jamoa → a'zo yonidagi rol tugmasi** — O'lchovchi ↔ Ko'ruvchi
+- **Jamoalar → jamoa → ✕** — a'zoni jamoadan chiqarish
+- **Xodimlar → xodimni tanlang** — rol (Administrator/O'lchovchi/Ko'ruvchi) va jamoani tanlash
+
+Jamoada obyekt yoki a'zo bo'lsa, u o'chirilmaydi — avval ko'chirish yoki jamoani
+faolsizlantirish kerak.
 
 ---
 
@@ -303,6 +345,24 @@ Xatoliklar yagona formatda va o'zbek tilida qaytadi:
 
 ---
 
+### Jamoa endpointlari
+
+| Metod | Yo'l | Izoh |
+| --- | --- | --- |
+| GET | `/api/v1/teams` | Jamoalar ro'yxati (admin — hammasi, boshqalar — o'z jamoasi) |
+| POST | `/api/v1/teams` | Yangi jamoa (admin) |
+| GET | `/api/v1/teams/{id}` | Jamoa va a'zolari |
+| PATCH | `/api/v1/teams/{id}` | Jamoani tahrirlash (admin) |
+| DELETE | `/api/v1/teams/{id}` | Jamoani o'chirish (admin, bo'sh bo'lsa) |
+| GET | `/api/v1/teams/{id}/members` | A'zolar ro'yxati |
+| POST | `/api/v1/teams/{id}/members` | Telegram ID yoki `user_id` bo'yicha a'zo qo'shish / rol berish (admin) |
+| DELETE | `/api/v1/teams/{id}/members/{user_id}` | A'zoni chiqarish (admin) |
+
+`GET /api/v1/projects` uchun `team_id` filtri mavjud (faqat administrator uchun ta'sirli —
+boshqa rollarda so'rov har holda o'z jamoasi bilan cheklanadi).
+
+---
+
 ## Muhit o'zgaruvchilari
 
 Asosiylari (to'liq ro'yxat — [.env.example](.env.example)):
@@ -313,6 +373,7 @@ Asosiylari (to'liq ro'yxat — [.env.example](.env.example)):
 | `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL DSN |
 | `TELEGRAM_BOT_TOKEN` | — | initData imzosini tekshirish uchun **majburiy** |
 | `ADMIN_TELEGRAM_IDS` | bo'sh | Vergul bilan: `111,222` |
+| `DEFAULT_USER_ROLE` | Yangi foydalanuvchining boshlang'ich roli (`viewer` yoki `measurer`) | `viewer` |
 | `FIRST_USER_IS_ADMIN` | `true` | Birinchi foydalanuvchi admin bo'ladi |
 | `ALLOW_SELF_REGISTRATION` | `true` | Yangi foydalanuvchi o'zi ro'yxatdan o'ta oladimi |
 | `STORAGE_BACKEND` | `local` | `local` yoki `telegram` |

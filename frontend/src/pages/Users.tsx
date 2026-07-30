@@ -4,6 +4,7 @@ import { Button } from '../components/Button'
 import { CardSkeleton, Chip, EmptyState, ErrorState } from '../components/Feedback'
 import { OfflineBanner, PageHeader, Screen } from '../components/Layout'
 import { Sheet } from '../components/Sheet'
+import { Select } from '../components/Input'
 import { InfoRow } from '../components/cards'
 import { useDebounce } from '../hooks/useDebounce'
 import { useResource } from '../hooks/useResource'
@@ -13,7 +14,7 @@ import { cn } from '../lib/cn'
 import { formatDateTime, formatPhone, initials } from '../lib/format'
 import { useAuth } from '../store/auth'
 import { useToast } from '../store/toast'
-import type { Paginated, User } from '../types'
+import type { Paginated, Team, User, UserRole } from '../types'
 
 export function UsersPage() {
   const toast = useToast()
@@ -30,8 +31,12 @@ export function UsersPage() {
   }, [debounced])
 
   const { data, loading, error, reload } = useResource<Paginated<User>>(`/users?${query}`)
+  const { data: teams } = useResource<Team[]>('/teams')
 
-  const update = async (user: User, payload: Partial<Pick<User, 'role' | 'is_active'>>) => {
+  const update = async (
+    user: User,
+    payload: Partial<Pick<User, 'role' | 'is_active'>> & { team_id?: string | null },
+  ) => {
     setBusy(true)
     try {
       const updated = await api.patch<User>(`/users/${user.id}`, payload, {
@@ -90,7 +95,8 @@ export function UsersPage() {
                   {user.id === currentUser?.id && <Chip tone="brand">siz</Chip>}
                 </span>
                 <span className="mt-0.5 block truncate text-sm text-hint">
-                  {user.username ? `@${user.username}` : formatPhone(user.phone)}
+                  {user.team_name ?? t.teams.noTeam}
+                  {user.telegram_id ? ` · ID: ${user.telegram_id}` : ''}
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
@@ -107,6 +113,7 @@ export function UsersPage() {
           <div className="space-y-4">
             <div className="divide-y" style={{ borderColor: 'var(--app-border)' }}>
               <InfoRow label={t.users.role} value={selected.role_label} />
+              <InfoRow label={t.teams.team} value={selected.team_name ?? t.teams.noTeam} />
               <InfoRow label={t.profile.phone} value={formatPhone(selected.phone)} />
               <InfoRow label={t.profile.telegramId} value={selected.telegram_id ?? '—'} />
               <InfoRow
@@ -117,17 +124,29 @@ export function UsersPage() {
             </div>
 
             {selected.id !== currentUser?.id && (
-              <div className="space-y-2">
-                <Button
-                  fullWidth
-                  variant="secondary"
-                  loading={busy}
-                  onClick={() =>
-                    void update(selected, { role: selected.role === 'admin' ? 'measurer' : 'admin' })
+              <div className="space-y-3">
+                <Select
+                  label={t.users.role}
+                  value={selected.role}
+                  disabled={busy}
+                  onChange={(event) => void update(selected, { role: event.target.value as UserRole })}
+                  options={[
+                    { value: 'admin', label: `${t.roles.admin} — ${t.roles.adminHint}` },
+                    { value: 'measurer', label: `${t.roles.measurer} — ${t.roles.measurerHint}` },
+                    { value: 'viewer', label: `${t.roles.viewer} — ${t.roles.viewerHint}` },
+                  ]}
+                />
+
+                <Select
+                  label={t.teams.team}
+                  value={selected.team_id ?? ''}
+                  disabled={busy}
+                  placeholder={t.teams.noTeam}
+                  onChange={(event) =>
+                    void update(selected, { team_id: event.target.value || null })
                   }
-                >
-                  {selected.role === 'admin' ? t.users.makeMeasurer : t.users.makeAdmin}
-                </Button>
+                  options={(teams ?? []).map((team) => ({ value: team.id, label: team.name }))}
+                />
                 <Button
                   fullWidth
                   variant={selected.is_active ? 'danger' : 'success'}

@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     first_user_is_admin: bool = True
     # Faqat ro'yxatdagi (is_active) foydalanuvchilar kira olsinmi
     allow_self_registration: bool = True
+    # Yangi ro'yxatdan o'tgan foydalanuvchining boshlang'ich roli.
+    # Sukut bo'yicha "viewer" — administrator uni jamoaga biriktirib, rol beradi.
+    default_user_role: Literal["measurer", "viewer"] = "viewer"
+    # Birinchi administrator uchun avtomatik yaratiladigan jamoa nomi
+    default_team_name: str = "Asosiy jamoa"
 
     # --- Dev login (Telegramsiz sinov uchun) ---
     allow_dev_login: bool = False

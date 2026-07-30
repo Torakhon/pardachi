@@ -22,6 +22,7 @@ from app.domain.models import (
     ProjectLocation,
     Room,
     RoomImage,
+    Team,
     User,
 )
 
@@ -43,6 +44,7 @@ class ProjectFilters:
     search: str | None = None
     status: ProjectStatus | None = None
     created_by_id: uuid.UUID | None = None
+    team_id: uuid.UUID | None = None
     date_from: date | None = None
     date_to: date | None = None
     include_deleted: bool = False
@@ -53,8 +55,27 @@ class ProjectFilters:
 class UserFilters:
     search: str | None = None
     role: UserRole | None = None
+    team_id: uuid.UUID | None = None
+    without_team: bool = False
     is_active: bool | None = None
     order_by: str = "-created_at"
+
+
+@dataclass(slots=True)
+class ProjectScope:
+    """Obyektlarni ko'rish doirasi (rolga qarab hisoblanadi).
+
+    - `all_teams=True` — administrator: cheklov yo'q.
+    - `team_id` — foydalanuvchi faqat shu jamoa obyektlarini ko'radi.
+    - `team_id is None and not all_teams` — jamoasi yo'q: hech narsa ko'rmaydi.
+    """
+
+    team_id: uuid.UUID | None = None
+    all_teams: bool = False
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.all_teams and self.team_id is None
 
 
 @dataclass(slots=True)
@@ -69,7 +90,9 @@ class DashboardStats:
     doors_total: int = 0
     users_total: int = 0
     photos_total: int = 0
+    teams_total: int = 0
     per_measurer: list[dict[str, Any]] = field(default_factory=list)
+    per_team: list[dict[str, Any]] = field(default_factory=list)
 
 
 class UserRepository(ABC):
@@ -106,7 +129,7 @@ class ProjectRepository(ABC):
     async def list(self, filters: ProjectFilters, page: int, size: int) -> Page[Project]: ...
 
     @abstractmethod
-    async def recent(self, limit: int, created_by_id: uuid.UUID | None = None) -> list[Project]: ...
+    async def recent(self, limit: int, scope: ProjectScope) -> list[Project]: ...
 
     @abstractmethod
     async def add(self, project: Project) -> Project: ...
@@ -115,7 +138,36 @@ class ProjectRepository(ABC):
     async def delete(self, project: Project) -> None: ...
 
     @abstractmethod
-    async def stats(self, created_by_id: uuid.UUID | None = None) -> DashboardStats: ...
+    async def stats(self, scope: ProjectScope) -> DashboardStats: ...
+
+    @abstractmethod
+    async def count_by_team(self, team_id: uuid.UUID) -> int: ...
+
+    @abstractmethod
+    async def first_by_creator(self, user_id: uuid.UUID) -> Project | None: ...
+
+
+class TeamRepository(ABC):
+    @abstractmethod
+    async def get(self, team_id: uuid.UUID) -> Team | None: ...
+
+    @abstractmethod
+    async def get_by_name(self, name: str) -> Team | None: ...
+
+    @abstractmethod
+    async def list(self, *, only_active: bool = False) -> list[Team]: ...
+
+    @abstractmethod
+    async def add(self, team: Team) -> Team: ...
+
+    @abstractmethod
+    async def delete(self, team: Team) -> None: ...
+
+    @abstractmethod
+    async def members(self, team_id: uuid.UUID) -> list[User]: ...
+
+    @abstractmethod
+    async def count(self) -> int: ...
 
 
 class RoomRepository(ABC):
@@ -202,6 +254,7 @@ class UnitOfWork(ABC):
     """Tranzaksiya chegarasi va repozitoriylar to'plami."""
 
     users: UserRepository
+    teams: TeamRepository
     projects: ProjectRepository
     rooms: RoomRepository
     items: MeasurementItemRepository

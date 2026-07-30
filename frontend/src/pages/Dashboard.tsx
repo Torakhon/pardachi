@@ -10,7 +10,7 @@ import { useAuth } from '../store/auth'
 import type { DashboardStats } from '../types'
 
 export function DashboardPage() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, canWrite, hasTeam } = useAuth()
   const navigate = useNavigate()
   const { data, loading, error, fromCache, reload } = useResource<DashboardStats>('/stats/dashboard')
 
@@ -24,9 +24,23 @@ export function DashboardPage() {
 
       {fromCache && <p className="mb-3 text-xs text-hint">{t.offline.cachedView}</p>}
 
-      <Button fullWidth size="lg" className="mb-5" onClick={() => navigate('/projects/new')}>
-        ➕ {t.dashboard.newProject}
-      </Button>
+      {!hasTeam && (
+        <div className="mb-5 rounded-2xl bg-warning/10 px-4 py-3 text-sm font-medium text-warning">
+          {t.teams.noTeam}. {t.teams.noTeamHint}
+        </div>
+      )}
+
+      {!canWrite && hasTeam && (
+        <div className="mb-5 rounded-2xl bg-black/5 px-4 py-3 text-sm text-hint dark:bg-white/10">
+          {t.roles.readOnlyWarning}
+        </div>
+      )}
+
+      {canWrite && hasTeam && (
+        <Button fullWidth size="lg" className="mb-5" onClick={() => navigate('/projects/new')}>
+          ➕ {t.dashboard.newProject}
+        </Button>
+      )}
 
       {loading && !data ? (
         <CardSkeleton count={2} />
@@ -92,6 +106,25 @@ export function DashboardPage() {
               </div>
             )}
           </Section>
+
+          {isAdmin && data.per_team.length > 0 && (
+            <Section title={t.teams.title}>
+              <div className="card divide-y" style={{ borderColor: 'var(--app-border)' }}>
+                {data.per_team.map((row) => (
+                  <Link
+                    key={row.team_id}
+                    to={`/projects?team_id=${row.team_id}`}
+                    className="tap-scale flex items-center justify-between gap-3 px-4 py-3"
+                  >
+                    <span className="min-w-0 truncate text-sm font-medium">{row.name}</span>
+                    <span className="shrink-0 text-sm text-hint tabular-nums">
+                      {row.projects_count} / <span className="text-success">{row.completed_count}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </Section>
+          )}
 
           {isAdmin && data.per_measurer.length > 0 && (
             <Section title={t.dashboard.staff}>

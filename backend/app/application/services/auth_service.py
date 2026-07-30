@@ -126,11 +126,18 @@ class AuthService:
         return user
 
     async def _resolve_initial_role(self, telegram_id: int) -> UserRole:
+        """Yangi foydalanuvchining boshlang'ich roli.
+
+        Ro'yxatdan o'tgan yangi foydalanuvchi hech qanday jamoaga tegishli emas va
+        sukut bo'yicha «Ko'ruvchi» bo'ladi — administrator uni jamoaga biriktirib,
+        kerakli rolni beradi. Bu boshqa jamoalar ma'lumotiga tasodifiy kirishning
+        oldini oladi.
+        """
         if telegram_id in self._config.admin_telegram_ids:
             return UserRole.ADMIN
         if self._config.first_user_is_admin and await self._uow.users.count() == 0:
             return UserRole.ADMIN
-        return UserRole.MEASURER
+        return UserRole(self._config.default_user_role)
 
     async def _finalize_login(
         self, user: User, *, ip_address: str | None, user_agent: str | None

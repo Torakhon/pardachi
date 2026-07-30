@@ -25,6 +25,7 @@ from app.domain.models import (
     ProjectLocation,
     Room,
     RoomImage,
+    Team,
     User,
 )
 from app.infrastructure.db.session import session_scope
@@ -64,7 +65,16 @@ PROJECT_NAMES = [
 
 async def reset_data() -> None:
     async with session_scope() as session:
-        for model in (AuditLog, MeasurementItem, RoomImage, Room, ProjectLocation, Project, User):
+        for model in (
+            AuditLog,
+            MeasurementItem,
+            RoomImage,
+            Room,
+            ProjectLocation,
+            Project,
+            User,
+            Team,
+        ):
             await session.execute(delete(model))
     print("Barcha ma'lumotlar tozalandi.")
 
@@ -85,6 +95,24 @@ async def seed() -> None:
             phone="+998901110011",
             role=UserRole.ADMIN,
         )
+        session.add(admin)
+        await session.flush()
+
+        teams = [
+            Team(
+                name="Toshkent jamoasi",
+                description="Toshkent shahri va viloyati bo'yicha o'lchovlar.",
+                created_by_id=admin.id,
+            ),
+            Team(
+                name="Samarqand jamoasi",
+                description="Samarqand va Buxoro yo'nalishi.",
+                created_by_id=admin.id,
+            ),
+        ]
+        session.add_all(teams)
+        await session.flush()
+
         measurers = [
             User(
                 telegram_id=100000002,
@@ -93,6 +121,7 @@ async def seed() -> None:
                 last_name="Qodirov",
                 phone="+998902220022",
                 role=UserRole.MEASURER,
+                team_id=teams[0].id,
             ),
             User(
                 telegram_id=100000003,
@@ -101,9 +130,30 @@ async def seed() -> None:
                 last_name="Yusupova",
                 phone="+998903330033",
                 role=UserRole.MEASURER,
+                team_id=teams[1].id,
             ),
         ]
-        session.add_all([admin, *measurers])
+        viewers = [
+            User(
+                telegram_id=100000004,
+                username="koruvchi_1",
+                first_name="Sanjar",
+                last_name="Aliyev",
+                phone="+998904440044",
+                role=UserRole.VIEWER,
+                team_id=teams[0].id,
+            ),
+            User(
+                telegram_id=100000005,
+                username="koruvchi_2",
+                first_name="Kamola",
+                last_name="Rasulova",
+                phone="+998905550055",
+                role=UserRole.VIEWER,
+                team_id=teams[1].id,
+            ),
+        ]
+        session.add_all([*measurers, *viewers])
         await session.flush()
 
         statuses = [
@@ -130,6 +180,7 @@ async def seed() -> None:
                 address=address,
                 note="Mijoz och rangdagi pardalarni afzal ko'radi." if index % 2 == 0 else None,
                 status=status,
+                team_id=measurer.team_id,
                 created_by_id=measurer.id,
                 updated_by_id=measurer.id,
                 created_at=created_at,
@@ -219,9 +270,13 @@ async def seed() -> None:
 
         print("Namunaviy ma'lumotlar qo'shildi:")
         print("  Admin      : Alisher Nazarov (telegram_id=100000001)")
-        print("  O'lchovchi : Rustam Qodirov (telegram_id=100000002)")
-        print("  O'lchovchi : Dilnoza Yusupova (telegram_id=100000003)")
-        print(f"  Obyektlar  : {len(PROJECT_NAMES)} ta")
+        print("  Jamoa 1    : Toshkent jamoasi")
+        print("     O'lchovchi : Rustam Qodirov (telegram_id=100000002)")
+        print("     Ko'ruvchi  : Sanjar Aliyev (telegram_id=100000004)")
+        print("  Jamoa 2    : Samarqand jamoasi")
+        print("     O'lchovchi : Dilnoza Yusupova (telegram_id=100000003)")
+        print("     Ko'ruvchi  : Kamola Rasulova (telegram_id=100000005)")
+        print(f"  Obyektlar  : {len(PROJECT_NAMES)} ta (jamoalar bo'yicha taqsimlangan)")
 
 
 async def main() -> None:

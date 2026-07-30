@@ -30,7 +30,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # noqa: E402
 
 from app.api.deps import get_db_session  # noqa: E402
-from app.domain.models import Base  # noqa: E402
+from app.domain.models import Base, Team, User  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
@@ -98,13 +98,83 @@ async def auth_headers(
     return {"Authorization": f"Bearer {data['access_token']}"}
 
 
-@pytest.fixture
-async def measurer_headers(client: AsyncClient) -> dict[str, str]:
-    return await auth_headers(client, role="measurer", telegram_id=555000111)
+async def create_team(session_factory, name: str) -> Team:
+    """Bazada to'g'ridan-to'g'ri jamoa yaratadi."""
+    async with session_factory() as session:
+        team = Team(name=name)
+        session.add(team)
+        await session.commit()
+        return team
+
+
+async def assign_team(session_factory, telegram_id: int, team: Team | None) -> None:
+    """Dev-login orqali yaratilgan foydalanuvchini jamoaga biriktiradi."""
+    from sqlalchemy import select
+
+    async with session_factory() as session:
+        user = (await session.execute(select(User).where(User.telegram_id == telegram_id))).scalar_one()
+        user.team_id = team.id if team is not None else None
+        await session.commit()
+
+
+async def member_headers(
+    client: AsyncClient,
+    session_factory,
+    *,
+    role: str,
+    telegram_id: int,
+    team: Team | None,
+) -> dict[str, str]:
+    """Berilgan rol va jamoadagi foydalanuvchi uchun sarlavhalar."""
+    headers = await auth_headers(client, role=role, telegram_id=telegram_id)
+    await assign_team(session_factory, telegram_id, team)
+    return headers
 
 
 @pytest.fixture
-async def admin_headers(client: AsyncClient) -> dict[str, str]:
+async def team(session_factory) -> Team:
+    return await create_team(session_factory, "Toshkent jamoasi")
+
+
+@pytest.fixture
+async def other_team(session_factory) -> Team:
+    return await create_team(session_factory, "Samarqand jamoasi")
+
+
+@pytest.fixture
+async def measurer_headers(client: AsyncClient, session_factory, team: Team) -> dict[str, str]:
+    """Birinchi jamoaning o'lchovchisi."""
+    return await member_headers(client, session_factory, role="measurer", telegram_id=555000111, team=team)
+
+
+@pytest.fixture
+async def teammate_headers(client: AsyncClient, session_factory, team: Team) -> dict[str, str]:
+    """Xuddi shu jamoadagi ikkinchi o'lchovchi."""
+    return await member_headers(client, session_factory, role="measurer", telegram_id=555000333, team=team)
+
+
+@pytest.fixture
+async def viewer_headers(client: AsyncClient, session_factory, team: Team) -> dict[str, str]:
+    """Birinchi jamoaning ko'ruvchisi (faqat o'qish huquqi)."""
+    return await member_headers(client, session_factory, role="viewer", telegram_id=555000444, team=team)
+
+
+@pytest.fixture
+async def other_headers(client: AsyncClient, session_factory, other_team: Team) -> dict[str, str]:
+    """Boshqa jamoaning o'lchovchisi."""
+    return await member_headers(
+        client, session_factory, role="measurer", telegram_id=555000555, team=other_team
+    )
+
+
+@pytest.fixture
+async def teamless_headers(client: AsyncClient, session_factory) -> dict[str, str]:
+    """Hech qanday jamoaga biriktirilmagan o'lchovchi."""
+    return await member_headers(client, session_factory, role="measurer", telegram_id=555000666, team=None)
+
+
+@pytest.fixture
+async def admin_headers(client: AsyncClient, session_factory, team: Team) -> dict[str, str]:
     return await auth_headers(client, role="admin", telegram_id=555000222)
 
 

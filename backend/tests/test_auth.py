@@ -8,13 +8,20 @@ from tests.test_init_data import build_init_data
 
 
 async def test_telegram_login_creates_user(client: AsyncClient) -> None:
+    """Yangi foydalanuvchi jamoasiz «Ko'ruvchi» bo'lib kiradi.
+
+    Administrator uni jamoaga biriktirib, kerakli rolni beradi — shu tariqa yangi
+    kirgan odam boshqa jamoalar ma'lumotini ko'ra olmaydi.
+    """
     response = await client.post("/api/v1/auth/telegram", json={"init_data": build_init_data(user_id=777)})
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["token_type"] == "bearer"
     assert body["user"]["telegram_id"] == 777
-    assert body["user"]["role"] == "measurer"
-    assert body["user"]["role_label"] == "O'lchovchi"
+    assert body["user"]["role"] == "viewer"
+    assert body["user"]["role_label"] == "Ko'ruvchi"
+    assert body["user"]["team_id"] is None
+    assert body["user"]["can_write"] is False
 
 
 async def test_telegram_login_with_bad_signature_returns_uzbek_error(client: AsyncClient) -> None:

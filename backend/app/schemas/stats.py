@@ -16,6 +16,13 @@ class MeasurerStats(BaseModel):
     completed_count: int
 
 
+class TeamStatsRow(BaseModel):
+    team_id: uuid.UUID
+    name: str
+    projects_count: int
+    completed_count: int
+
+
 class DashboardResponse(BaseModel):
     projects_total: int = Field(description="Jami obyektlar")
     projects_draft: int = Field(description="Yangi obyektlar")
@@ -27,8 +34,10 @@ class DashboardResponse(BaseModel):
     doors_total: int = Field(description="Jami eshiklar")
     photos_total: int = Field(description="Jami rasmlar")
     users_total: int = Field(description="Jami foydalanuvchilar")
+    teams_total: int = Field(default=0, description="Jami jamoalar")
     recent_projects: list[ProjectSummary] = Field(default_factory=list)
     per_measurer: list[MeasurerStats] = Field(default_factory=list)
+    per_team: list[TeamStatsRow] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

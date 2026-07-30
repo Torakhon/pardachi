@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 
 from app.application.permissions import (
     ensure_admin,
+    ensure_can_create_project,
     ensure_can_delete_project,
     ensure_can_edit_project,
     ensure_can_view_project,
@@ -15,7 +16,13 @@ from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.logging import get_logger, log_extra
 from app.domain.enums import AuditAction, ProjectStatus
 from app.domain.models import MeasurementItem, Project, ProjectLocation, Room, User
-from app.domain.repositories import DashboardStats, Page, ProjectFilters, UnitOfWork
+from app.domain.repositories import (
+    DashboardStats,
+    Page,
+    ProjectFilters,
+    ProjectScope,
+    UnitOfWork,
+)
 from app.schemas.project import LocationCreate, ProjectCreate, ProjectUpdate
 from app.schemas.room import RoomCreate
 
@@ -42,29 +49,41 @@ class ProjectService:
         search: str | None = None,
         status: ProjectStatus | None = None,
         measurer_id: uuid.UUID | None = None,
+        team_id: uuid.UUID | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
         order_by: str = "-created_at",
         page: int = 1,
         size: int = 20,
     ) -> Page[Project]:
-        # O'lchovchi faqat o'z obyektlarini ko'radi.
-        effective_measurer = measurer_id if actor.is_admin else actor.id
+        scope = self._scope(actor)
+        if scope.is_empty:
+            # Jamoaga biriktirilmagan foydalanuvchi hech narsa ko'rmaydi.
+            return Page(items=[], total=0, page=page, size=size)
+
         filters = ProjectFilters(
             search=search,
             status=status,
-            created_by_id=effective_measurer,
+            created_by_id=measurer_id,
+            # Administrator jamoani tanlashi mumkin; boshqalar uchun o'z jamoasi majburiy.
+            team_id=team_id if scope.all_teams else scope.team_id,
             date_from=date_from,
             date_to=date_to,
             order_by=order_by,
         )
         return await self._uow.projects.list(filters, page, size)
 
+    @staticmethod
+    def _scope(actor: User) -> ProjectScope:
+        if actor.is_admin:
+            return ProjectScope(all_teams=True)
+        return ProjectScope(team_id=actor.team_id)
+
     async def recent(self, actor: User, limit: int = 5) -> list[Project]:
-        return await self._uow.projects.recent(limit, None if actor.is_admin else actor.id)
+        return await self._uow.projects.recent(limit, self._scope(actor))
 
     async def stats(self, actor: User) -> DashboardStats:
-        return await self._uow.projects.stats(None if actor.is_admin else actor.id)
+        return await self._uow.projects.stats(self._scope(actor))
 
     async def next_order_number(self) -> str:
         """`OB-YYYYMMDD-NNN` ko'rinishidagi bo'sh buyurtma raqamini qaytaradi."""
@@ -79,6 +98,9 @@ class ProjectService:
     # --------------------------------------------------------------- write
 
     async def create(self, payload: ProjectCreate, actor: User) -> Project:
+        ensure_can_create_project(actor)
+        team_id = await self._resolve_team_for_create(actor)
+
         if payload.id is not None:
             existing = await self._uow.projects.get(payload.id, include_deleted=True)
             if existing is not None:
@@ -90,6 +112,7 @@ class ProjectService:
 
         project = Project(
             id=payload.id or uuid.uuid4(),
+            team_id=team_id,
             name=payload.name,
             order_number=payload.order_number,
             customer_name=payload.customer_name,
@@ -119,7 +142,11 @@ class ProjectService:
             action=AuditAction.CREATE,
             entity_type="project",
             entity_id=str(project.id),
-            payload={"name": project.name, "order_number": project.order_number},
+            payload={
+                "name": project.name,
+                "order_number": project.order_number,
+                "team_id": str(team_id),
+            },
         )
         await self._uow.commit()
         logger.info("Obyekt yaratildi", extra=log_extra(project_id=str(project.id)))
@@ -231,6 +258,18 @@ class ProjectService:
         return await self._reload(project_id)
 
     # ------------------------------------------------------------ internal
+
+    async def _resolve_team_for_create(self, actor: User) -> uuid.UUID:
+        """Yangi obyekt qaysi jamoaga tegishli bo'lishini aniqlaydi."""
+        if actor.team_id is not None:
+            return actor.team_id
+        # Administratorda jamoa ko'rsatilmagan bo'lsa — birinchi faol jamoaga yoziladi.
+        teams = await self._uow.teams.list(only_active=True)
+        if not teams:
+            raise ValidationError(
+                "Avval kamida bitta jamoa yarating (Jamoalar bo'limi), so'ng obyekt qo'shing."
+            )
+        return teams[0].id
 
     async def _reload(self, project_id: uuid.UUID) -> Project:
         project = await self._uow.projects.get(project_id, include_deleted=True)

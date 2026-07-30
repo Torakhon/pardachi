@@ -1,6 +1,6 @@
 /** Backend API bilan umumiy tiplar (app/schemas ga mos). */
 
-export type UserRole = 'admin' | 'measurer'
+export type UserRole = 'admin' | 'measurer' | 'viewer'
 export type ProjectStatus = 'draft' | 'in_progress' | 'completed' | 'cancelled'
 export type ItemType = 'window' | 'door'
 export type RoomType =
@@ -15,6 +15,27 @@ export type RoomType =
   | 'other'
 export type LocationSource = 'telegram' | 'browser' | 'manual'
 
+export interface TeamRef {
+  id: string
+  name: string
+  is_active: boolean
+}
+
+export interface Team {
+  id: string
+  name: string
+  description: string | null
+  is_active: boolean
+  status_label: string
+  members_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TeamWithMembers extends Team {
+  members: UserShort[]
+}
+
 export interface User {
   id: string
   telegram_id: number | null
@@ -25,8 +46,13 @@ export interface User {
   photo_url: string | null
   role: UserRole
   role_label: string
+  role_description: string
   is_active: boolean
   language_code: string
+  team_id: string | null
+  team: TeamRef | null
+  team_name: string | null
+  can_write: boolean
   last_login_at: string | null
   created_at: string
   full_name: string
@@ -37,7 +63,11 @@ export interface UserShort {
   first_name: string
   last_name: string | null
   username: string | null
+  telegram_id: number | null
   role: UserRole
+  role_label: string
+  is_active: boolean
+  team_id: string | null
   full_name: string
 }
 
@@ -124,6 +154,9 @@ export interface ProjectSummary {
   created_at: string
   updated_at: string
   completed_at: string | null
+  team_id: string | null
+  team: TeamRef | null
+  team_name: string | null
   creator: UserShort | null
   rooms_count: number
   items_count: number
@@ -160,7 +193,9 @@ export interface DashboardStats {
   photos_total: number
   users_total: number
   recent_projects: ProjectSummary[]
+  teams_total: number
   per_measurer: { user_id: string; full_name: string; projects_count: number; completed_count: number }[]
+  per_team: { team_id: string; name: string; projects_count: number; completed_count: number }[]
 }
 
 export interface EnumOption {

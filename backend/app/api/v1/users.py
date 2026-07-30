@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, status
 
-from app.api.deps import AdminUser, PaginationDep, UserServiceDep
+from app.api.deps import AdminUser, CurrentUser, PaginationDep, UserServiceDep
 from app.domain.enums import UserRole
 from app.schemas.common import MessageResponse, PageMeta, PaginatedResponse
 from app.schemas.user import UserCreate, UserRead, UserShort, UserUpdate
@@ -29,11 +29,15 @@ async def list_users(
     search: Annotated[str | None, Query(max_length=120, description="Ism, username yoki telefon")] = None,
     role: Annotated[UserRole | None, Query(description="Rol bo'yicha filtr")] = None,
     is_active: Annotated[bool | None, Query(description="Faollik bo'yicha filtr")] = None,
+    team_id: Annotated[uuid.UUID | None, Query(description="Jamoa bo'yicha filtr")] = None,
+    without_team: Annotated[bool, Query(description="Faqat jamoasi yo'qlar")] = False,
 ) -> PaginatedResponse[UserRead]:
     page = await service.list(
         admin,
         search=search,
         role=role,
+        team_id=team_id,
+        without_team=without_team,
         is_active=is_active,
         page=pagination.page,
         size=pagination.size,
@@ -49,8 +53,8 @@ async def list_users(
     response_model=list[UserShort],
     summary="O'lchovchilar ro'yxati (filtrlar uchun)",
 )
-async def list_measurers(admin: AdminUser, service: UserServiceDep) -> list[UserShort]:
-    users = await service.list_measurers(admin)
+async def list_measurers(user: CurrentUser, service: UserServiceDep) -> list[UserShort]:
+    users = await service.list_measurers(user)
     return [UserShort.model_validate(user) for user in users]
 
 

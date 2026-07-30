@@ -11,6 +11,7 @@ import { ApiError, QueuedError, api } from '../lib/api'
 import { maskPhoneInput, phoneToApi } from '../lib/format'
 import { buildOptimisticProject, cacheProject, newId } from '../lib/optimistic'
 import { getCurrentLocation, haptic } from '../lib/telegram'
+import { useAuth } from '../store/auth'
 import { useToast } from '../store/toast'
 import type { GeoResult } from '../lib/telegram'
 import type { Project } from '../types'
@@ -37,6 +38,7 @@ export function ProjectFormPage({ mode }: { mode: 'create' | 'edit' }) {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const toast = useToast()
+  const { user: currentUser } = useAuth()
   useTelegramBack(mode === 'edit' && projectId ? `/projects/${projectId}` : '/projects')
 
   const [form, setForm] = useState<FormState>(EMPTY)
@@ -161,7 +163,14 @@ export function ProjectFormPage({ mode }: { mode: 'create' | 'edit' }) {
       } catch (error) {
         if (error instanceof QueuedError) {
           // Oflayn: yozuvni lokal keshga qo'yamiz, navbat internet qaytganda yuboradi.
-          await cacheProject(buildOptimisticProject({ ...payload, id }))
+          await cacheProject(
+            buildOptimisticProject({
+              ...payload,
+              id,
+              team_id: currentUser?.team_id ?? null,
+              team_name: currentUser?.team_name ?? null,
+            }),
+          )
           toast.warning(t.offline.savedLocally)
           navigate(`/projects/${id}`, { replace: true })
           return

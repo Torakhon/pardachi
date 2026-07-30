@@ -22,19 +22,31 @@ class UserService:
         *,
         search: str | None = None,
         role: UserRole | None = None,
+        team_id: uuid.UUID | None = None,
+        without_team: bool = False,
         is_active: bool | None = None,
         page: int = 1,
         size: int = 20,
     ) -> Page[User]:
         ensure_admin(actor)
-        filters = UserFilters(search=search, role=role, is_active=is_active)
+        filters = UserFilters(
+            search=search,
+            role=role,
+            team_id=team_id,
+            without_team=without_team,
+            is_active=is_active,
+        )
         return await self._uow.users.list(filters, page, size)
 
     async def list_measurers(self, actor: User) -> list[User]:
-        """Filtrlar uchun o'lchovchilar ro'yxati."""
-        ensure_admin(actor)
+        """Filtrlar uchun o'lchovchilar ro'yxati (o'z jamoasi doirasida)."""
         users = await self._uow.users.list_all()
-        return [user for user in users if user.is_active]
+        active = [user for user in users if user.is_active]
+        if actor.is_admin:
+            return active
+        if actor.team_id is None:
+            return []
+        return [user for user in active if user.team_id == actor.team_id]
 
     async def get(self, user_id: uuid.UUID, actor: User) -> User:
         if actor.id != user_id:
@@ -51,6 +63,9 @@ class UserService:
             if existing is not None:
                 raise ConflictError("Bu Telegram ID bilan foydalanuvchi allaqachon mavjud.")
 
+        if payload.team_id is not None and await self._uow.teams.get(payload.team_id) is None:
+            raise NotFoundError("Jamoa topilmadi.")
+
         user = User(
             telegram_id=payload.telegram_id,
             first_name=payload.first_name,
@@ -58,6 +73,7 @@ class UserService:
             username=payload.username,
             phone=payload.phone,
             role=payload.role,
+            team_id=payload.team_id,
             is_active=payload.is_active,
         )
         await self._uow.users.add(user)
@@ -78,6 +94,8 @@ class UserService:
             raise NotFoundError("Foydalanuvchi topilmadi.")
 
         data = payload.model_dump(exclude_unset=True)
+        if data.get("team_id") is not None and await self._uow.teams.get(data["team_id"]) is None:
+            raise NotFoundError("Jamoa topilmadi.")
         if user.id == actor.id:
             if data.get("role") is not None and UserRole(data["role"]) is not UserRole.ADMIN:
                 raise ValidationError("O'zingizning admin rolingizni o'zgartira olmaysiz.")
@@ -112,8 +130,7 @@ class UserService:
             raise NotFoundError("Foydalanuvchi topilmadi.")
 
         # Obyektlari bor foydalanuvchi o'chirilmaydi — faqat bloklanadi.
-        projects = await self._uow.projects.recent(1, user.id)
-        if projects:
+        if await self._uow.projects.first_by_creator(user.id) is not None:
             raise ConflictError("Bu foydalanuvchida obyektlar mavjud. Uni o'chirish o'rniga bloklang.")
 
         await self._uow.users.delete(user)

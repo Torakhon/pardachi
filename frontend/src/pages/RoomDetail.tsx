@@ -11,6 +11,7 @@ import { useResource } from '../hooks/useResource'
 import { useTelegramBack } from '../hooks/useTelegramBack'
 import { t } from '../i18n/uz'
 import { QueuedError, api } from '../lib/api'
+import { useAuth } from '../store/auth'
 import { useToast } from '../store/toast'
 import type { Room, RoomImage } from '../types'
 
@@ -18,6 +19,7 @@ export function RoomDetailPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const toast = useToast()
+  const { canWrite } = useAuth()
 
   const { data: room, loading, error, fromCache, reload, setData } = useResource<Room>(
     roomId ? `/rooms/${roomId}` : null,
@@ -94,6 +96,7 @@ export function RoomDetailPage() {
         subtitle={room.room_type_label}
         back={`/projects/${room.project_id}`}
         action={
+          canWrite ? (
           <div className="flex">
             <IconButton label={t.app.edit} onClick={() => navigate(`/rooms/${room.id}/edit`)}>
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -106,13 +109,25 @@ export function RoomDetailPage() {
               </svg>
             </IconButton>
           </div>
+          ) : undefined
         }
       />
 
       {fromCache && <p className="mb-3 text-xs text-hint">{t.offline.cachedView}</p>}
 
       <Section title={t.room.photo}>
-        <PhotoPicker roomId={room.id} image={room.image} onUploaded={onImageChange} />
+        {canWrite ? (
+          <PhotoPicker roomId={room.id} image={room.image} onUploaded={onImageChange} />
+        ) : room.image ? (
+          <img
+            src={room.image.url}
+            alt={room.name}
+            className="w-full rounded-2xl object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <p className="card p-4 text-sm text-hint">{t.room.noPhoto}</p>
+        )}
       </Section>
 
       {room.note && (
@@ -140,22 +155,28 @@ export function RoomDetailPage() {
               <MeasurementRow
                 key={item.id}
                 item={item}
-                onClick={() => navigate(`/measurements/${item.id}/edit`)}
-                onDelete={() => setItemToDelete(item.id)}
+                onClick={canWrite ? () => navigate(`/measurements/${item.id}/edit`) : undefined}
+                onDelete={canWrite ? () => setItemToDelete(item.id) : undefined}
               />
             ))}
           </div>
         )}
       </Section>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button size="lg" onClick={() => navigate(`/rooms/${room.id}/items/new?type=window`)}>
-          🪟 {t.room.addWindow}
-        </Button>
-        <Button size="lg" variant="secondary" onClick={() => navigate(`/rooms/${room.id}/items/new?type=door`)}>
-          🚪 {t.room.addDoor}
-        </Button>
-      </div>
+      {canWrite ? (
+        <div className="grid grid-cols-2 gap-3">
+          <Button size="lg" onClick={() => navigate(`/rooms/${room.id}/items/new?type=window`)}>
+            🪟 {t.room.addWindow}
+          </Button>
+          <Button size="lg" variant="secondary" onClick={() => navigate(`/rooms/${room.id}/items/new?type=door`)}>
+            🚪 {t.room.addDoor}
+          </Button>
+        </div>
+      ) : (
+        <p className="rounded-2xl bg-black/5 px-4 py-3 text-sm text-hint dark:bg-white/10">
+          {t.roles.readOnlyWarning}
+        </p>
+      )}
 
       <ConfirmDialog
         open={itemToDelete !== null}

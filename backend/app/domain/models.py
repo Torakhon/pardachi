@@ -86,11 +86,43 @@ class TimestampMixin:
     )
 
 
+class Team(Base, TimestampMixin):
+    """Jamoa — ma'lumotlar izolyatsiyasining asosiy chegarasi.
+
+    Har bir obyekt (loyiha) aynan bitta jamoaga tegishli. Jamoa a'zolari faqat
+    o'z jamoasining ma'lumotlarini ko'radi; administrator barcha jamoalarni ko'radi.
+    """
+
+    __tablename__ = "teams"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    # use_alter — `teams` va `users` o'rtasidagi aylanma bog'liqlik uchun
+    # (jadval yaratish/o'chirish tartibi buzilmasligi kerak).
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL", use_alter=True, name="fk_teams_created_by_id")
+    )
+
+    members: Mapped[list[User]] = relationship(
+        back_populates="team",
+        foreign_keys="User.team_id",
+        lazy="selectin",
+        order_by="User.first_name",
+    )
+
+    @property
+    def members_count(self) -> int:
+        return len(self.members)
+
+
 class User(Base, TimestampMixin):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     telegram_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, index=True)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("teams.id", ondelete="SET NULL"), index=True)
     username: Mapped[str | None] = mapped_column(String(64), index=True)
     first_name: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     last_name: Mapped[str | None] = mapped_column(String(128))
@@ -103,13 +135,19 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    team: Mapped[Team | None] = relationship(
+        back_populates="members", foreign_keys=[team_id], lazy="selectin"
+    )
     projects: Mapped[list[Project]] = relationship(
         back_populates="creator",
         foreign_keys="Project.created_by_id",
         lazy="noload",
     )
 
-    __table_args__ = (Index("ix_users_role_active", "role", "is_active"),)
+    __table_args__ = (
+        Index("ix_users_role_active", "role", "is_active"),
+        Index("ix_users_team_role", "team_id", "role"),
+    )
 
     @property
     def full_name(self) -> str:
@@ -120,6 +158,15 @@ class User(Base, TimestampMixin):
     @property
     def is_admin(self) -> bool:
         return self.role is UserRole.ADMIN
+
+    @property
+    def can_write(self) -> bool:
+        """Ma'lumot yaratish/tahrirlash huquqi (Ko'ruvchi'da yo'q)."""
+        return self.role.can_write
+
+    @property
+    def team_name(self) -> str | None:
+        return self.team.name if self.team is not None else None
 
 
 class Project(Base, TimestampMixin):
@@ -138,6 +185,9 @@ class Project(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("teams.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     created_by_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )
@@ -145,6 +195,7 @@ class Project(Base, TimestampMixin):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
 
+    team: Mapped[Team] = relationship(foreign_keys=[team_id], lazy="selectin")
     creator: Mapped[User] = relationship(
         back_populates="projects", foreign_keys=[created_by_id], lazy="selectin"
     )
@@ -165,6 +216,7 @@ class Project(Base, TimestampMixin):
         UniqueConstraint("order_number", name="uq_projects_order_number"),
         Index("ix_projects_status_created", "status", "created_at"),
         Index("ix_projects_creator_created", "created_by_id", "created_at"),
+        Index("ix_projects_team_created", "team_id", "created_at"),
     )
 
     @property

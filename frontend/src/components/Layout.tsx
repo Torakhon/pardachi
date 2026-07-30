@@ -120,6 +120,18 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    to: '/teams',
+    label: t.nav.teams,
+    adminOnly: true,
+    icon: (
+      <svg viewBox="0 0 24 24" className={ICON_CLASS} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <circle cx="9" cy="8" r="3.2" strokeLinecap="round" />
+        <path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" strokeLinecap="round" />
+        <path d="M16 5.5a3 3 0 0 1 0 5.8M17.5 19.5c0-2.2-.9-3.9-2.3-4.7" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     to: '/projects',
     label: t.nav.projects,
     icon: (

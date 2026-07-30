@@ -21,7 +21,7 @@ export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const toast = useToast()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canWrite, user: currentUser } = useAuth()
   useTelegramBack('/projects')
 
   const { data: project, loading, error, fromCache, reload } = useResource<Project>(
@@ -129,6 +129,8 @@ export function ProjectDetailPage() {
   }
 
   const completed = project.status === 'completed'
+  // Administrator hamma obyektni, o'lchovchi faqat o'zi yaratganini tahrirlaydi.
+  const canEdit = isAdmin || (canWrite && project.creator?.id === currentUser?.id)
 
   return (
     <Screen>
@@ -138,6 +140,7 @@ export function ProjectDetailPage() {
         subtitle={`№ ${project.order_number}`}
         back="/projects"
         action={
+          canEdit ? (
           <div className="flex">
             <IconButton label={t.app.edit} onClick={() => navigate(`/projects/${project.id}/edit`)}>
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -150,6 +153,7 @@ export function ProjectDetailPage() {
               </svg>
             </IconButton>
           </div>
+          ) : undefined
         }
       />
 
@@ -200,9 +204,11 @@ export function ProjectDetailPage() {
       <Section
         title={`${t.project.rooms} (${project.rooms.length})`}
         action={
-          <Button size="sm" variant="ghost" onClick={() => navigate(`/projects/${project.id}/rooms/new`)}>
-            ➕ {t.project.addRoom}
-          </Button>
+          canEdit ? (
+            <Button size="sm" variant="ghost" onClick={() => navigate(`/projects/${project.id}/rooms/new`)}>
+              ➕ {t.project.addRoom}
+            </Button>
+          ) : undefined
         }
       >
         {project.rooms.length === 0 ? (
@@ -212,9 +218,11 @@ export function ProjectDetailPage() {
               title={t.project.emptyRooms}
               description={t.room.photoHint}
               action={
-                <Button size="sm" onClick={() => navigate(`/projects/${project.id}/rooms/new`)}>
-                  {t.project.addRoom}
-                </Button>
+                canEdit ? (
+                  <Button size="sm" onClick={() => navigate(`/projects/${project.id}/rooms/new`)}>
+                    {t.project.addRoom}
+                  </Button>
+                ) : undefined
               }
             />
           </div>
@@ -224,8 +232,8 @@ export function ProjectDetailPage() {
               <RoomCard
                 key={room.id}
                 room={room}
-                onEdit={() => navigate(`/rooms/${room.id}/edit`)}
-                onDelete={() => setRoomToDelete(room.id)}
+                onEdit={canEdit ? () => navigate(`/rooms/${room.id}/edit`) : undefined}
+                onDelete={canEdit ? () => setRoomToDelete(room.id) : undefined}
               />
             ))}
           </div>
@@ -233,9 +241,11 @@ export function ProjectDetailPage() {
       </Section>
 
       <div className="space-y-3">
-        <Button fullWidth size="lg" onClick={() => navigate(`/projects/${project.id}/rooms/new`)}>
-          ➕ {t.project.addRoom}
-        </Button>
+        {canEdit && (
+          <Button fullWidth size="lg" onClick={() => navigate(`/projects/${project.id}/rooms/new`)}>
+            ➕ {t.project.addRoom}
+          </Button>
+        )}
 
         {completed ? (
           <Button

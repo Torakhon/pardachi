@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from app.domain.enums import LocationSource, ProjectStatus
 from app.schemas.common import ORMModel, PhoneMixin
 from app.schemas.room import RoomCreate, RoomRead
+from app.schemas.team import TeamShort
 from app.schemas.user import UserShort
 
 
@@ -97,6 +98,8 @@ class ProjectSummary(ORMModel):
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None
+    team_id: uuid.UUID | None = None
+    team: TeamShort | None = None
     creator: UserShort | None = None
     rooms_count: int = 0
     items_count: int = 0
@@ -107,6 +110,11 @@ class ProjectSummary(ORMModel):
     @property
     def status_label(self) -> str:
         return ProjectStatus(self.status).label_uz
+
+    @computed_field(description="Jamoa nomi")  # type: ignore[prop-decorator]
+    @property
+    def team_name(self) -> str | None:
+        return self.team.name if self.team is not None else None
 
 
 class ProjectRead(ProjectSummary):
@@ -120,5 +128,6 @@ class ProjectFilterParams(BaseModel):
     search: str | None = Field(default=None, description="Obyekt nomi, mijoz, buyurtma raqami yoki telefon")
     status: ProjectStatus | None = Field(default=None, description="Holat bo'yicha filtr")
     measurer_id: uuid.UUID | None = Field(default=None, description="O'lchovchi bo'yicha filtr")
+    team_id: uuid.UUID | None = Field(default=None, description="Jamoa bo'yicha filtr (faqat admin)")
     date_from: date | None = Field(default=None, description="Sanadan (YYYY-MM-DD)")
     date_to: date | None = Field(default=None, description="Sanagacha (YYYY-MM-DD)")

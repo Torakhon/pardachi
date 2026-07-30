@@ -21,7 +21,11 @@ class DevLoginRequest(BaseModel):
     secret: str = Field(min_length=1, description="DEV_LOGIN_SECRET qiymati")
     telegram_id: int = Field(default=1000000001, description="Soxta Telegram ID")
     first_name: str = Field(default="Sinov", max_length=128)
-    role: str = Field(default="measurer", pattern="^(admin|measurer)$")
+    role: str = Field(
+        default="measurer",
+        pattern="^(admin|measurer|viewer)$",
+        description="admin | measurer | viewer",
+    )
 
 
 class RefreshRequest(BaseModel):

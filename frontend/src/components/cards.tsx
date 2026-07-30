@@ -46,7 +46,14 @@ export function StatCard({
   )
 }
 
-export function ProjectCard({ project }: { project: ProjectSummary }) {
+export function ProjectCard({
+  project,
+  showTeam = false,
+}: {
+  project: ProjectSummary
+  /** Administrator uchun jamoa nomini ham ko'rsatadi. */
+  showTeam?: boolean
+}) {
   return (
     <Link to={`/projects/${project.id}`} className="card tap-scale block p-4">
       <div className="mb-2 flex items-start justify-between gap-3">
@@ -62,6 +69,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
         <Chip>🚪 {project.rooms_count}</Chip>
         <Chip>📏 {project.items_count}</Chip>
         {project.photos_count > 0 && <Chip>📷 {project.photos_count}</Chip>}
+        {showTeam && project.team_name ? <Chip>👥 {project.team_name}</Chip> : null}
       </div>
 
       <div className="mt-2.5 flex items-center justify-between gap-2 text-xs text-hint">

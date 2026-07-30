@@ -12,14 +12,14 @@ import { useEnums } from '../hooks/useEnums'
 import { useResource } from '../hooks/useResource'
 import { t } from '../i18n/uz'
 import { useAuth } from '../store/auth'
-import type { Paginated, ProjectSummary, UserShort } from '../types'
+import type { Paginated, ProjectSummary, Team, UserShort } from '../types'
 
 const PAGE_SIZE = 20
 
 export function ProjectsPage() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canWrite } = useAuth()
   const enums = useEnums()
 
   const [search, setSearch] = useState(params.get('search') ?? '')
@@ -29,6 +29,7 @@ export function ProjectsPage() {
 
   const status = params.get('status') ?? ''
   const measurerId = params.get('measurer_id') ?? ''
+  const teamId = params.get('team_id') ?? ''
   const dateFrom = params.get('date_from') ?? ''
   const dateTo = params.get('date_to') ?? ''
 
@@ -37,17 +38,19 @@ export function ProjectsPage() {
     if (debouncedSearch.trim()) query.set('search', debouncedSearch.trim())
     if (status) query.set('status', status)
     if (measurerId) query.set('measurer_id', measurerId)
+    if (teamId) query.set('team_id', teamId)
     if (dateFrom) query.set('date_from', dateFrom)
     if (dateTo) query.set('date_to', dateTo)
     return query.toString()
-  }, [debouncedSearch, status, measurerId, dateFrom, dateTo, page])
+  }, [debouncedSearch, status, measurerId, teamId, dateFrom, dateTo, page])
 
   const { data, loading, error, fromCache, reload } = useResource<Paginated<ProjectSummary>>(
     `/projects?${query}`,
   )
   const measurers = useResource<UserShort[]>(isAdmin ? '/users/measurers' : null)
+  const teams = useResource<Team[]>(isAdmin ? '/teams' : null)
 
-  const activeFilters = [status, measurerId, dateFrom, dateTo].filter(Boolean).length
+  const activeFilters = [status, measurerId, teamId, dateFrom, dateTo].filter(Boolean).length
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params)
@@ -133,9 +136,11 @@ export function ProjectsPage() {
                 {t.filters.reset}
               </Button>
             ) : (
-              <Button size="sm" onClick={() => navigate('/projects/new')}>
-                {t.dashboard.newProject}
-              </Button>
+              canWrite ? (
+                <Button size="sm" onClick={() => navigate('/projects/new')}>
+                  {t.dashboard.newProject}
+                </Button>
+              ) : undefined
             )
           }
         />
@@ -143,7 +148,7 @@ export function ProjectsPage() {
         <>
           <div className="space-y-3">
             {data.items.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard key={project.id} project={project} showTeam={isAdmin} />
             ))}
           </div>
 
@@ -196,6 +201,16 @@ export function ProjectsPage() {
             options={enums.project_statuses}
             onChange={(event) => updateFilter('status', event.target.value)}
           />
+
+          {isAdmin && (
+            <Select
+              label={t.teams.team}
+              value={teamId}
+              placeholder={t.teams.allTeams}
+              options={(teams.data ?? []).map((team) => ({ value: team.id, label: team.name }))}
+              onChange={(event) => updateFilter('team_id', event.target.value)}
+            />
+          )}
 
           {isAdmin && (
             <Select

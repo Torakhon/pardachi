@@ -46,6 +46,10 @@ class SqlAlchemyUserRepository(UserRepository):
             conditions.append(User.role == filters.role)
         if filters.is_active is not None:
             conditions.append(User.is_active.is_(filters.is_active))
+        if filters.team_id is not None:
+            conditions.append(User.team_id == filters.team_id)
+        if filters.without_team:
+            conditions.append(User.team_id.is_(None))
         if conditions:
             stmt = stmt.where(*conditions)
 
